@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TOEIC 144 – Multi-Mode Listening & Vocabulary Trainer</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f6f7f9;color:#222;font-family:Arial,"Microsoft JhengHei",sans-serif}
+.wrap{max-width:960px;margin:28px auto;padding:0 18px}
+.card{background:#fff;border:1px solid #e3e5e8;border-radius:20px;padding:26px;box-shadow:0 5px 18px rgba(0,0,0,.05)}
+.top{display:flex;gap:9px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+button,select,label{font:inherit}
+button{cursor:pointer}
+.mode,.btn,.choice{border:1px solid #d6d8dc;background:#fff;border-radius:22px;padding:9px 14px}
+.mode.active{background:#202124;color:#fff;border-color:#202124}
+.grow{flex:1}
+.progress,.score,.note{font-size:14px;color:#666}
+.prompt{font-size:28px;font-weight:700;line-height:1.35;margin:12px 0}
+.context{font-size:18px;line-height:1.55;margin:10px 0 14px;padding:12px 14px;background:#f8f9fb;border-radius:10px}
+.listenbox{margin:12px 0;padding:16px;background:#f8f9fb;border-radius:14px;text-align:center}
+.listenbox .icon{font-size:42px}
+input{width:100%;padding:13px;border:1px solid #d8dade;border-radius:9px;font-size:18px;outline:none}
+input:focus{border-color:#8aa6ff;box-shadow:0 0 0 3px rgba(70,105,255,.12)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.choice{text-align:left;border-radius:11px;line-height:1.4}
+.choice:hover{background:#f5f6f8}
+.choice.correct{background:#edf9f1;border-color:#3a9f63}
+.choice.wrong{background:#fff0f0;border-color:#d95656}
+.feedback{margin-top:12px;font-weight:700;line-height:1.5}
+.good{color:#17813b} .bad{color:#d93636}
+.details{display:none;margin-top:11px;padding:12px 14px;background:#f7f8fa;border-radius:10px;color:#5f6368;line-height:1.55}
+.controls{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}
+.end{display:none;text-align:center}
+.review{text-align:left;margin-top:16px}
+.review-item{border-top:1px solid #ececef;padding:9px 0;line-height:1.5}
+kbd{background:#eee;border:1px solid #ccc;border-bottom-width:2px;border-radius:4px;padding:1px 5px}
+.toggle{display:flex;align-items:center;gap:6px;color:#555}
+@media(max-width:700px){.choices{grid-template-columns:1fr} .prompt{font-size:24px}}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="card">
+
+<div class="top">
+  <button class="mode active" data-mode="mixed">Tổng hợp</button>
+  <button class="mode" data-mode="listen_write">Nghe → viết</button>
+  <button class="mode" data-mode="sentence_target">Nghe câu → viết từ mới</button>
+  <button class="mode" data-mode="listen_meaning">Nghe → chọn nghĩa</button>
+  <button class="mode" data-mode="listen_write_meaning">Nghe → viết nghĩa</button>
+  <button class="mode" data-mode="en_vi">Anh → Việt</button>
+  <button class="mode" data-mode="vi_en">Việt → Anh</button>
+  <button class="mode" data-mode="mc_vi_en">Việt → chọn Anh</button>
+  <button class="mode" data-mode="cloze">Điền vào câu</button>
+</div>
+
+<div class="top">
+  <label>Số câu:
+    <select id="count">
+      <option value="20">20</option>
+      <option value="40">40</option>
+      <option value="80">80</option>
+      <option value="144">144</option>
+    </select>
+  </label>
+  <label class="toggle"><input type="checkbox" id="autoplay" checked> Tự động phát âm</label>
+  <label>Giọng:
+    <select id="voiceSelect">
+      <option value="">Tự chọn giọng US tốt nhất</option>
+    </select>
+  </label>
+  <span class="grow"></span>
+  <button id="cambridge" class="btn">🔊 Cambridge chính thức</button>
+  <button id="repeat" class="btn">🔁 Nghe lại</button>
+  <button id="slow" class="btn">🐢 Nghe chậm</button>
+  <button id="restart" class="btn">🔀 Lượt mới</button>
+</div>
+
+<div id="quiz">
+  <div id="progress" class="progress"></div>
+  <div id="score" class="score"></div>
+  <div id="prompt" class="prompt"></div>
+  <div id="context" class="context" style="display:none"></div>
+
+  <div id="listenbox" class="listenbox" style="display:none">
+    <div class="icon">🎧</div>
+    <div><b>Nghe kỹ rồi trả lời. Từ tiếng Anh được ẩn.</b></div>
+  </div>
+
+  <div id="choices" class="choices"></div>
+
+  <div id="typing">
+    <input id="answer" autocomplete="off" placeholder="Nhập đáp án...">
+    <div class="controls"><button id="check" class="btn">Kiểm tra</button></div>
+  </div>
+
+  <div id="feedback" class="feedback"></div>
+  <div id="details" class="details"></div>
+
+  <div class="controls">
+    <button id="next" class="btn" style="display:none">Câu tiếp theo</button>
+  </div>
+
+  <p class="note">
+    <kbd>Enter</kbd> lần 1 = kiểm tra · <kbd>Enter</kbd> lần 2 = câu tiếp theo.
+    Mỗi lượt xáo trộn và không lặp. Dạng “Nghe câu → viết từ mới” sẽ đọc cả câu nhưng bạn chỉ cần nhập từ/cụm từ mục tiêu. Dạng “Nghe → viết nghĩa” sẽ đọc từ/cụm từ tiếng Anh và bạn tự gõ nghĩa tiếng Việt. Nếu bật “Tự động phát âm”, câu mới sẽ tự phát.
+  </p>
+  <p class="note">
+    Bản tự động ưu tiên các giọng US chất lượng cao có sẵn trên thiết bị/trình duyệt (Natural/Neural nếu có). Đây không phải file thu âm Cambridge, nhưng được chọn để gần cách đọc từ điển tự nhiên nhất có thể.
+  </p>
+</div>
+
+<div id="end" class="end">
+  <h2>🎯 Hoàn thành</h2>
+  <p id="result"></p>
+  <button id="again" class="btn">🔀 Luyện lượt mới</button>
+  <div id="review" class="review"></div>
+</div>
+
+</div></div>
+
+<script>
+const MASTER=[{"en": "looking at", "vi": ["nhìn vào", "đang nhìn"], "cn": "看着；注视", "ipa": "/lˈʊkɪŋ ˈæt/", "collocation": "looking at a document", "ex_en": "A person is looking at a document.", "ex_cn": "有人正在进行“看着；注视”的动作。", "ex_vi": "Một người đang nhìn vào.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=looking%20at", "cloze": "A person is _____ a document."}, {"en": "staring", "vi": ["nhìn chằm chằm"], "cn": "盯着看", "ipa": "/stˈɛrɪŋ/", "collocation": "staring at a screen", "ex_en": "A person is staring at a screen.", "ex_cn": "有人正在进行“盯着看”的动作。", "ex_vi": "Một người đang nhìn chằm chằm.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=staring", "cloze": "A person is _____ at a screen."}, {"en": "reading", "vi": ["đọc", "đang đọc"], "cn": "阅读", "ipa": "/rˈidɪŋ/", "collocation": "reading a newspaper", "ex_en": "A person is reading a newspaper.", "ex_cn": "有人正在进行“阅读”的动作。", "ex_vi": "Một người đang đọc.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=reading", "cloze": "A person is _____ a newspaper."}, {"en": "watching", "vi": ["xem", "quan sát"], "cn": "观看；观察", "ipa": "/wˈɑtʃɪŋ/", "collocation": "watching a presentation", "ex_en": "A person is watching a presentation.", "ex_cn": "有人正在进行“观看；观察”的动作。", "ex_vi": "Một người đang xem.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=watching", "cloze": "A person is _____ a presentation."}, {"en": "eating", "vi": ["ăn"], "cn": "吃", "ipa": "/ˈitɪŋ/", "collocation": "eating a meal", "ex_en": "A person is eating a meal.", "ex_cn": "有人正在进行“吃”的动作。", "ex_vi": "Một người đang ăn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=eating", "cloze": "A person is _____ a meal."}, {"en": "drinking", "vi": ["uống"], "cn": "喝", "ipa": "/drˈɪŋkɪŋ/", "collocation": "drinking a beverage", "ex_en": "A person is drinking a beverage.", "ex_cn": "有人正在进行“喝”的动作。", "ex_vi": "Một người đang uống.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=drinking", "cloze": "A person is _____ a beverage."}, {"en": "talking", "vi": ["nói chuyện"], "cn": "交谈", "ipa": "/tˈɔkɪŋ/", "collocation": "talking to a customer", "ex_en": "A person is talking to a customer.", "ex_cn": "有人正在进行“交谈”的动作。", "ex_vi": "Một người đang nói chuyện.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=talking", "cloze": "A person is _____ to a customer."}, {"en": "smiling", "vi": ["mỉm cười"], "cn": "微笑", "ipa": "/smˈaɪlɪŋ/", "collocation": "smiling at a colleague", "ex_en": "A person is smiling at a colleague.", "ex_cn": "有人正在进行“微笑”的动作。", "ex_vi": "Một người đang mỉm cười.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=smiling", "cloze": "A person is _____ at a colleague."}, {"en": "holding", "vi": ["cầm", "giữ"], "cn": "拿着；握着", "ipa": "/hˈoʊldɪŋ/", "collocation": "holding a folder", "ex_en": "A person is holding a folder.", "ex_cn": "有人正在进行“拿着；握着”的动作。", "ex_vi": "Một người đang cầm.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=holding", "cloze": "A person is _____ a folder."}, {"en": "folding", "vi": ["gấp"], "cn": "折叠", "ipa": "/fˈoʊldɪŋ/", "collocation": "folding a piece of paper", "ex_en": "A person is folding a piece of paper.", "ex_cn": "有人正在进行“折叠”的动作。", "ex_vi": "Một người đang gấp.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=folding", "cloze": "A person is _____ a piece of paper."}, {"en": "carrying", "vi": ["mang", "xách"], "cn": "携带；搬运", "ipa": "/kˈæriɪŋ/", "collocation": "carrying a box", "ex_en": "A person is carrying a box.", "ex_cn": "有人正在进行“携带；搬运”的动作。", "ex_vi": "Một người đang mang.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=carrying", "cloze": "A person is _____ a box."}, {"en": "pushing", "vi": ["đẩy"], "cn": "推", "ipa": "/pˈʊʃɪŋ/", "collocation": "pushing a cart", "ex_en": "A person is pushing a cart.", "ex_cn": "有人正在进行“推”的动作。", "ex_vi": "Một người đang đẩy.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=pushing", "cloze": "A person is _____ a cart."}, {"en": "pulling", "vi": ["kéo"], "cn": "拉", "ipa": "/pˈʊlɪŋ/", "collocation": "pulling a suitcase", "ex_en": "A person is pulling a suitcase.", "ex_cn": "有人正在进行“拉”的动作。", "ex_vi": "Một người đang kéo.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=pulling", "cloze": "A person is _____ a suitcase."}, {"en": "typing", "vi": ["gõ máy", "đánh máy"], "cn": "打字", "ipa": "/tˈaɪpɪŋ/", "collocation": "typing on a keyboard", "ex_en": "A person is typing on a keyboard.", "ex_cn": "有人正在进行“打字”的动作。", "ex_vi": "Một người đang gõ máy.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=typing", "cloze": "A person is _____ on a keyboard."}, {"en": "touching", "vi": ["chạm vào"], "cn": "触摸", "ipa": "/tˈʌtʃɪŋ/", "collocation": "touching a screen", "ex_en": "A person is touching a screen.", "ex_cn": "有人正在进行“触摸”的动作。", "ex_vi": "Một người đang chạm vào.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=touching", "cloze": "A person is _____ a screen."}, {"en": "reaching", "vi": ["vươn tay", "với tới"], "cn": "伸手去够", "ipa": "/rˈitʃɪŋ/", "collocation": "reaching for an item", "ex_en": "A person is reaching for an item.", "ex_cn": "有人正在进行“伸手去够”的动作。", "ex_vi": "Một người đang vươn tay.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=reaching", "cloze": "A person is _____ for an item."}, {"en": "reaching into", "vi": ["thò tay vào", "vươn tay vào"], "cn": "把手伸进", "ipa": "/rˈitʃɪŋ ˈɪntu/", "collocation": "reaching into a bag", "ex_en": "A person is reaching into a bag.", "ex_cn": "有人正在进行“把手伸进”的动作。", "ex_vi": "Một người đang thò tay vào.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=reaching%20into", "cloze": "A person is _____ a bag."}, {"en": "hanging up", "vi": ["treo lên"], "cn": "挂起来", "ipa": "/hˈæŋɪŋ ˈʌp/", "collocation": "hanging up a coat", "ex_en": "A person is hanging up a coat.", "ex_cn": "有人正在进行“挂起来”的动作。", "ex_vi": "Một người đang treo lên.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=hanging%20up", "cloze": "A person is _____ a coat."}, {"en": "signing", "vi": ["ký", "ký tên"], "cn": "签名", "ipa": "/sˈaɪnɪŋ/", "collocation": "signing a document", "ex_en": "A person is signing a document.", "ex_cn": "有人正在进行“签名”的动作。", "ex_vi": "Một người đang ký.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=signing", "cloze": "A person is _____ a document."}, {"en": "writing", "vi": ["viết"], "cn": "写", "ipa": "/rˈaɪtɪŋ/", "collocation": "writing on a notepad", "ex_en": "A person is writing on a notepad.", "ex_cn": "有人正在进行“写”的动作。", "ex_vi": "Một người đang viết.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=writing", "cloze": "A person is _____ on a notepad."}, {"en": "installing", "vi": ["lắp đặt"], "cn": "安装", "ipa": "/ˌɪnstˈɔlɪŋ/", "collocation": "installing equipment", "ex_en": "A person is installing equipment.", "ex_cn": "有人正在进行“安装”的动作。", "ex_vi": "Một người đang lắp đặt.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=installing", "cloze": "A person is _____ equipment."}, {"en": "replacing", "vi": ["thay thế"], "cn": "更换", "ipa": "/rɪplˈeɪsɪŋ/", "collocation": "replacing a light bulb", "ex_en": "A person is replacing a light bulb.", "ex_cn": "有人正在进行“更换”的动作。", "ex_vi": "Một người đang thay thế.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=replacing", "cloze": "A person is _____ a light bulb."}, {"en": "pointing at", "vi": ["chỉ vào"], "cn": "指向", "ipa": "/pˈɔɪntɪŋ ˈæt/", "collocation": "pointing at a chart", "ex_en": "A person is pointing at a chart.", "ex_cn": "有人正在进行“指向”的动作。", "ex_vi": "Một người đang chỉ vào.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=pointing%20at", "cloze": "A person is _____ a chart."}, {"en": "using", "vi": ["sử dụng"], "cn": "使用", "ipa": "/jˈuzɪŋ/", "collocation": "using a computer", "ex_en": "A person is using a computer.", "ex_cn": "有人正在进行“使用”的动作。", "ex_vi": "Một người đang sử dụng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=using", "cloze": "A person is _____ a computer."}, {"en": "lifting", "vi": ["nâng lên", "nhấc lên"], "cn": "抬起；举起", "ipa": "/lˈɪftɪŋ/", "collocation": "lifting a box", "ex_en": "A person is lifting a box.", "ex_cn": "有人正在进行“抬起；举起”的动作。", "ex_vi": "Một người đang nâng lên.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=lifting", "cloze": "A person is _____ a box."}, {"en": "walking", "vi": ["đi bộ"], "cn": "走路", "ipa": "/wˈɔkɪŋ/", "collocation": "walking along a path", "ex_en": "A person is walking along a path.", "ex_cn": "有人正在进行“走路”的动作。", "ex_vi": "Một người đang đi bộ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=walking", "cloze": "A person is _____ along a path."}, {"en": "running", "vi": ["chạy"], "cn": "跑步", "ipa": "/rˈʌnɪŋ/", "collocation": "running across a field", "ex_en": "A person is running across a field.", "ex_cn": "有人正在进行“跑步”的动作。", "ex_vi": "Một người đang chạy.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=running", "cloze": "A person is _____ across a field."}, {"en": "kneeling", "vi": ["quỳ"], "cn": "跪着", "ipa": "/nˈilɪŋ/", "collocation": "kneeling on the floor", "ex_en": "A person is kneeling on the floor.", "ex_cn": "有人正在进行“跪着”的动作。", "ex_vi": "Một người đang quỳ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=kneeling", "cloze": "A person is _____ on the floor."}, {"en": "climbing", "vi": ["leo"], "cn": "攀爬", "ipa": "/klˈaɪmɪŋ/", "collocation": "climbing a ladder", "ex_en": "A person is climbing a ladder.", "ex_cn": "有人正在进行“攀爬”的动作。", "ex_vi": "Một người đang leo.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=climbing", "cloze": "A person is _____ a ladder."}, {"en": "sitting", "vi": ["ngồi"], "cn": "坐着", "ipa": "/sˈɪtɪŋ/", "collocation": "sitting at a desk", "ex_en": "A person is sitting at a desk.", "ex_cn": "有人正在进行“坐着”的动作。", "ex_vi": "Một người đang ngồi.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=sitting", "cloze": "A person is _____ at a desk."}, {"en": "lying", "vi": ["nằm"], "cn": "躺着", "ipa": "/lˈaɪɪŋ/", "collocation": "lying on the ground", "ex_en": "A person is lying on the ground.", "ex_cn": "有人正在进行“躺着”的动作。", "ex_vi": "Một người đang nằm.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=lying", "cloze": "A person is _____ on the ground."}, {"en": "standing", "vi": ["đứng"], "cn": "站着", "ipa": "/stˈændɪŋ/", "collocation": "standing near a counter", "ex_en": "A person is standing near a counter.", "ex_cn": "有人正在进行“站着”的动作。", "ex_vi": "Một người đang đứng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=standing", "cloze": "A person is _____ near a counter."}, {"en": "cleaning", "vi": ["dọn dẹp", "làm sạch"], "cn": "清洁；打扫", "ipa": "/klˈinɪŋ/", "collocation": "cleaning a table", "ex_en": "A person is cleaning a table.", "ex_cn": "有人正在进行“清洁；打扫”的动作。", "ex_vi": "Một người đang dọn dẹp.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=cleaning", "cloze": "A person is _____ a table."}, {"en": "wiping", "vi": ["lau"], "cn": "擦拭", "ipa": "/wˈaɪpɪŋ/", "collocation": "wiping a surface", "ex_en": "A person is wiping a surface.", "ex_cn": "有人正在进行“擦拭”的动作。", "ex_vi": "Một người đang lau.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=wiping", "cloze": "A person is _____ a surface."}, {"en": "sweeping", "vi": ["quét"], "cn": "扫地", "ipa": "/swˈipɪŋ/", "collocation": "sweeping the floor", "ex_en": "A person is sweeping the floor.", "ex_cn": "有人正在进行“扫地”的动作。", "ex_vi": "Một người đang quét.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=sweeping", "cloze": "A person is _____ the floor."}, {"en": "washing", "vi": ["rửa", "giặt"], "cn": "清洗", "ipa": "/wˈɑʃɪŋ/", "collocation": "washing dishes", "ex_en": "A person is washing dishes.", "ex_cn": "有人正在进行“清洗”的动作。", "ex_vi": "Một người đang rửa.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=washing", "cloze": "A person is _____ dishes."}, {"en": "painting", "vi": ["sơn", "vẽ"], "cn": "粉刷；绘画", "ipa": "/pˈeɪntɪŋ/", "collocation": "painting a wall", "ex_en": "A person is painting a wall.", "ex_cn": "有人正在进行“粉刷；绘画”的动作。", "ex_vi": "Một người đang sơn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=painting", "cloze": "A person is _____ a wall."}, {"en": "fixing", "vi": ["sửa"], "cn": "修理", "ipa": "/fˈɪksɪŋ/", "collocation": "fixing a machine", "ex_en": "A person is fixing a machine.", "ex_cn": "有人正在进行“修理”的动作。", "ex_vi": "Một người đang sửa.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=fixing", "cloze": "A person is _____ a machine."}, {"en": "repairing", "vi": ["sửa chữa"], "cn": "维修", "ipa": "/rɪpˈɛrɪŋ/", "collocation": "repairing a vehicle", "ex_en": "A person is repairing a vehicle.", "ex_cn": "有人正在进行“维修”的动作。", "ex_vi": "Một người đang sửa chữa.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=repairing", "cloze": "A person is _____ a vehicle."}, {"en": "lining up", "vi": ["xếp hàng"], "cn": "排队", "ipa": "/lˈaɪnɪŋ ˈʌp/", "collocation": "lining up at a counter", "ex_en": "A person is lining up at a counter.", "ex_cn": "有人正在进行“排队”的动作。", "ex_vi": "Một người đang xếp hàng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=lining%20up", "cloze": "A person is _____ at a counter."}, {"en": "waiting in line", "vi": ["đang chờ xếp hàng"], "cn": "排队等候", "ipa": "/wˈeɪtɪŋ ɪn lˈaɪn/", "collocation": "waiting in line at a store", "ex_en": "A person is waiting in line at a store.", "ex_cn": "有人正在进行“排队等候”的动作。", "ex_vi": "Một người đang đang chờ xếp hàng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=waiting%20in%20line", "cloze": "A person is _____ at a store."}, {"en": "opening", "vi": ["mở"], "cn": "打开", "ipa": "/ˈoʊpənɪŋ/", "collocation": "opening a door", "ex_en": "A person is opening a door.", "ex_cn": "有人正在进行“打开”的动作。", "ex_vi": "Một người đang mở.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=opening", "cloze": "A person is _____ a door."}, {"en": "closing", "vi": ["đóng"], "cn": "关闭", "ipa": "/klˈoʊzɪŋ/", "collocation": "closing a window", "ex_en": "A person is closing a window.", "ex_cn": "有人正在进行“关闭”的动作。", "ex_vi": "Một người đang đóng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=closing", "cloze": "A person is _____ a window."}, {"en": "turning on", "vi": ["bật"], "cn": "打开（电器）", "ipa": "/tˈɝnɪŋ ˈɑn/", "collocation": "turning on a light", "ex_en": "A person is turning on a light.", "ex_cn": "有人正在进行“打开（电器）”的动作。", "ex_vi": "Một người đang bật.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=turning%20on", "cloze": "A person is _____ a light."}, {"en": "turning off", "vi": ["tắt"], "cn": "关闭（电器）", "ipa": "/tˈɝnɪŋ ˈɔf/", "collocation": "turning off a machine", "ex_en": "A person is turning off a machine.", "ex_cn": "有人正在进行“关闭（电器）”的动作。", "ex_vi": "Một người đang tắt.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=turning%20off", "cloze": "A person is _____ a machine."}, {"en": "paying", "vi": ["thanh toán", "trả tiền"], "cn": "付款", "ipa": "/pˈeɪɪŋ/", "collocation": "paying for a purchase", "ex_en": "A person is paying for a purchase.", "ex_cn": "有人正在进行“付款”的动作。", "ex_vi": "Một người đang thanh toán.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=paying", "cloze": "A person is _____ for a purchase."}, {"en": "buying", "vi": ["mua"], "cn": "购买", "ipa": "/bˈaɪɪŋ/", "collocation": "buying groceries", "ex_en": "A person is buying groceries.", "ex_cn": "有人正在进行“购买”的动作。", "ex_vi": "Một người đang mua.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=buying", "cloze": "A person is _____ groceries."}, {"en": "cooking", "vi": ["nấu ăn"], "cn": "做饭", "ipa": "/kˈʊkɪŋ/", "collocation": "cooking a meal", "ex_en": "A person is cooking a meal.", "ex_cn": "有人正在进行“做饭”的动作。", "ex_vi": "Một người đang nấu ăn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=cooking", "cloze": "A person is _____ a meal."}, {"en": "boarding", "vi": ["lên tàu/xe/máy bay"], "cn": "登上（交通工具）", "ipa": "/bˈɔrdɪŋ/", "collocation": "boarding a train", "ex_en": "A person is boarding a train.", "ex_cn": "有人正在进行“登上（交通工具）”的动作。", "ex_vi": "Một người đang lên tàu/xe/máy bay.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=boarding", "cloze": "A person is _____ a train."}, {"en": "arranging", "vi": ["sắp xếp", "bố trí"], "cn": "整理；摆放", "ipa": "/ɚˈeɪndʒɪŋ/", "collocation": "arranging some chairs", "ex_en": "A person is arranging some chairs.", "ex_cn": "有人正在进行“整理；摆放”的动作。", "ex_vi": "Một người đang sắp xếp.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=arranging", "cloze": "A person is _____ some chairs."}, {"en": "watering", "vi": ["tưới nước"], "cn": "浇水", "ipa": "/wˈɔtɚɪŋ/", "collocation": "watering some plants", "ex_en": "A person is watering some plants.", "ex_cn": "有人正在进行“浇水”的动作。", "ex_vi": "Một người đang tưới nước.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=watering", "cloze": "A person is _____ some plants."}, {"en": "removing", "vi": ["gỡ bỏ", "loại bỏ"], "cn": "移除", "ipa": "/rimˈuvɪŋ/", "collocation": "removing an item", "ex_en": "A person is removing an item.", "ex_cn": "有人正在进行“移除”的动作。", "ex_vi": "Một người đang gỡ bỏ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=removing", "cloze": "A person is _____ an item."}, {"en": "moving", "vi": ["di chuyển"], "cn": "移动", "ipa": "/mˈuvɪŋ/", "collocation": "moving some boxes", "ex_en": "A person is moving some boxes.", "ex_cn": "有人正在进行“移动”的动作。", "ex_vi": "Một người đang di chuyển.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=moving", "cloze": "A person is _____ some boxes."}, {"en": "picking up", "vi": ["nhặt lên", "cầm lên"], "cn": "捡起；拿起", "ipa": "/pˈɪkɪŋ ˈʌp/", "collocation": "picking up a package", "ex_en": "A person is picking up a package.", "ex_cn": "有人正在进行“捡起；拿起”的动作。", "ex_vi": "Một người đang nhặt lên.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=picking%20up", "cloze": "A person is _____ a package."}, {"en": "wearing", "vi": ["mặc", "đeo"], "cn": "穿着；戴着", "ipa": "/wˈɛrɪŋ/", "collocation": "wearing a uniform", "ex_en": "A person is wearing a uniform.", "ex_cn": "有人正在进行“穿着；戴着”的动作。", "ex_vi": "Một người đang mặc.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=wearing", "cloze": "A person is _____ a uniform."}, {"en": "leaning over", "vi": ["cúi người về phía trước"], "cn": "俯身", "ipa": "/lˈinɪŋ ˈoʊvɚ/", "collocation": "leaning over a table", "ex_en": "A person is leaning over a table.", "ex_cn": "有人正在进行“俯身”的动作。", "ex_vi": "Một người đang cúi người về phía trước.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=leaning%20over", "cloze": "A person is _____ a table."}, {"en": "leaning against", "vi": ["dựa vào"], "cn": "倚靠", "ipa": "/lˈinɪŋ əɡˈɛnst/", "collocation": "leaning against a wall", "ex_en": "A person is leaning against a wall.", "ex_cn": "有人正在进行“倚靠”的动作。", "ex_vi": "Một người đang dựa vào.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=leaning%20against", "cloze": "A person is _____ a wall."}, {"en": "visiting", "vi": ["tham quan", "thăm"], "cn": "参观；拜访", "ipa": "/vˈɪzɪtɪŋ/", "collocation": "visiting a museum", "ex_en": "A person is visiting a museum.", "ex_cn": "有人正在进行“参观；拜访”的动作。", "ex_vi": "Một người đang tham quan.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=visiting", "cloze": "A person is _____ a museum."}, {"en": "above", "vi": ["ở phía trên"], "cn": "在……上方", "ipa": "/əbˈʌv/", "collocation": "above the table", "ex_en": "The object is above the table.", "ex_cn": "物体位于“在……上方”的位置。", "ex_vi": "Vật đó ở vị trí ở phía trên.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=above", "cloze": "The object is _____ the table."}, {"en": "under", "vi": ["ở dưới"], "cn": "在……下面", "ipa": "/ˈʌndɚ/", "collocation": "under a desk", "ex_en": "The object is under a desk.", "ex_cn": "物体位于“在……下面”的位置。", "ex_vi": "Vật đó ở vị trí ở dưới.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=under", "cloze": "The object is _____ a desk."}, {"en": "beside", "vi": ["bên cạnh"], "cn": "在……旁边", "ipa": "/bɪsˈaɪd/", "collocation": "beside a window", "ex_en": "The object is beside a window.", "ex_cn": "物体位于“在……旁边”的位置。", "ex_vi": "Vật đó ở vị trí bên cạnh.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=beside", "cloze": "The object is _____ a window."}, {"en": "next to", "vi": ["ngay bên cạnh"], "cn": "紧挨着", "ipa": "/nˈɛkst tˈu/", "collocation": "next to a building", "ex_en": "The object is next to a building.", "ex_cn": "物体位于“紧挨着”的位置。", "ex_vi": "Vật đó ở vị trí ngay bên cạnh.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=next%20to", "cloze": "The object is _____ a building."}, {"en": "near", "vi": ["gần"], "cn": "在……附近", "ipa": "/nˈɪr/", "collocation": "near the entrance", "ex_en": "The object is near the entrance.", "ex_cn": "物体位于“在……附近”的位置。", "ex_vi": "Vật đó ở vị trí gần.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=near", "cloze": "The object is _____ the entrance."}, {"en": "behind", "vi": ["phía sau"], "cn": "在……后面", "ipa": "/bɪhˈaɪnd/", "collocation": "behind a counter", "ex_en": "The object is behind a counter.", "ex_cn": "物体位于“在……后面”的位置。", "ex_vi": "Vật đó ở vị trí phía sau.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=behind", "cloze": "The object is _____ a counter."}, {"en": "in front of", "vi": ["phía trước"], "cn": "在……前面", "ipa": "/ɪn frˈʌnt ˈʌv/", "collocation": "in front of a building", "ex_en": "The object is in front of a building.", "ex_cn": "物体位于“在……前面”的位置。", "ex_vi": "Vật đó ở vị trí phía trước.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=in%20front%20of", "cloze": "The object is _____ a building."}, {"en": "between", "vi": ["ở giữa hai"], "cn": "在两者之间", "ipa": "/bɪtwˈin/", "collocation": "between two chairs", "ex_en": "The object is between two chairs.", "ex_cn": "物体位于“在两者之间”的位置。", "ex_vi": "Vật đó ở vị trí ở giữa hai.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=between", "cloze": "The object is _____ two chairs."}, {"en": "among", "vi": ["ở giữa nhiều", "trong số"], "cn": "在……之中", "ipa": "/əmˈʌŋ/", "collocation": "among the trees", "ex_en": "The object is among the trees.", "ex_cn": "物体位于“在……之中”的位置。", "ex_vi": "Vật đó ở vị trí ở giữa nhiều.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=among", "cloze": "The object is _____ the trees."}, {"en": "inside", "vi": ["bên trong"], "cn": "在……里面", "ipa": "/ˌɪnsˈaɪd/", "collocation": "inside the building", "ex_en": "The object is inside the building.", "ex_cn": "物体位于“在……里面”的位置。", "ex_vi": "Vật đó ở vị trí bên trong.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=inside", "cloze": "The object is _____ the building."}, {"en": "outside", "vi": ["bên ngoài"], "cn": "在……外面", "ipa": "/ˈaʊtsˈaɪd/", "collocation": "outside the store", "ex_en": "The object is outside the store.", "ex_cn": "物体位于“在……外面”的位置。", "ex_vi": "Vật đó ở vị trí bên ngoài.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=outside", "cloze": "The object is _____ the store."}, {"en": "opposite", "vi": ["đối diện"], "cn": "在对面", "ipa": "/ˈɑpəzət/", "collocation": "opposite the entrance", "ex_en": "The object is opposite the entrance.", "ex_cn": "物体位于“在对面”的位置。", "ex_vi": "Vật đó ở vị trí đối diện.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=opposite", "cloze": "The object is _____ the entrance."}, {"en": "across from", "vi": ["đối diện với"], "cn": "在……正对面", "ipa": "/əkrˈɔs frˈʌm/", "collocation": "across from the station", "ex_en": "The object is across from the station.", "ex_cn": "物体位于“在……正对面”的位置。", "ex_vi": "Vật đó ở vị trí đối diện với.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=across%20from", "cloze": "The object is _____ the station."}, {"en": "around", "vi": ["xung quanh"], "cn": "在……周围", "ipa": "/ɚˈaʊnd/", "collocation": "around a table", "ex_en": "The object is around a table.", "ex_cn": "物体位于“在……周围”的位置。", "ex_vi": "Vật đó ở vị trí xung quanh.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=around", "cloze": "The object is _____ a table."}, {"en": "along", "vi": ["dọc theo"], "cn": "沿着", "ipa": "/əlˈɔŋ/", "collocation": "along the road", "ex_en": "The object is along the road.", "ex_cn": "物体位于“沿着”的位置。", "ex_vi": "Vật đó ở vị trí dọc theo.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=along", "cloze": "The object is _____ the road."}, {"en": "across", "vi": ["băng qua", "ngang qua"], "cn": "穿过；横过", "ipa": "/əkrˈɔs/", "collocation": "across the street", "ex_en": "The object is across the street.", "ex_cn": "物体位于“穿过；横过”的位置。", "ex_vi": "Vật đó ở vị trí băng qua.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=across", "cloze": "The object is _____ the street."}, {"en": "theater", "vi": ["nhà hát", "rạp hát"], "cn": "剧院；电影院", "ipa": "/θˈiətɚ/", "collocation": "inside a theater", "ex_en": "The photo shows a theater.", "ex_cn": "照片中可以看到剧院。", "ex_vi": "Trong ảnh có nhà hát.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=theater", "cloze": "The photo shows a _____."}, {"en": "restaurant", "vi": ["nhà hàng"], "cn": "餐厅", "ipa": "/rˈɛstɚˌɑnt/", "collocation": "at a restaurant", "ex_en": "The photo shows a restaurant.", "ex_cn": "照片中可以看到餐厅。", "ex_vi": "Trong ảnh có nhà hàng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=restaurant", "cloze": "The photo shows a _____."}, {"en": "cafeteria", "vi": ["nhà ăn", "căng tin"], "cn": "自助餐厅；食堂", "ipa": "/kˌæfətˈɪriə/", "collocation": "in a cafeteria", "ex_en": "The photo shows a cafeteria.", "ex_cn": "照片中可以看到自助餐厅。", "ex_vi": "Trong ảnh có nhà ăn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=cafeteria", "cloze": "The photo shows a _____."}, {"en": "dining area", "vi": ["khu vực ăn uống"], "cn": "用餐区", "ipa": "/dˈaɪnɪŋ ˈɛriə/", "collocation": "in the dining area", "ex_en": "The photo shows a dining area.", "ex_cn": "照片中可以看到用餐区。", "ex_vi": "Trong ảnh có khu vực ăn uống.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=dining%20area", "cloze": "The photo shows a _____."}, {"en": "park", "vi": ["công viên"], "cn": "公园", "ipa": "/pˈɑrk/", "collocation": "in a park", "ex_en": "The photo shows a park.", "ex_cn": "照片中可以看到公园。", "ex_vi": "Trong ảnh có công viên.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=park", "cloze": "The photo shows a _____."}, {"en": "grassy area", "vi": ["khu vực có cỏ", "bãi cỏ"], "cn": "草地区域", "ipa": "/ɡrˈæsi ˈɛriə/", "collocation": "on a grassy area", "ex_en": "The photo shows a grassy area.", "ex_cn": "照片中可以看到草地区域。", "ex_vi": "Trong ảnh có khu vực có cỏ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=grassy%20area", "cloze": "The photo shows a _____."}, {"en": "bridge", "vi": ["cây cầu"], "cn": "桥", "ipa": "/brˈɪdʒ/", "collocation": "crossing a bridge", "ex_en": "The photo shows a bridge.", "ex_cn": "照片中可以看到桥。", "ex_vi": "Trong ảnh có cây cầu.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=bridge", "cloze": "The photo shows a _____."}, {"en": "fishing pier", "vi": ["cầu tàu câu cá"], "cn": "钓鱼码头", "ipa": "/fˈɪʃɪŋ pˈɪr/", "collocation": "on a fishing pier", "ex_en": "The photo shows a fishing pier.", "ex_cn": "照片中可以看到钓鱼码头。", "ex_vi": "Trong ảnh có cầu tàu câu cá.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=fishing%20pier", "cloze": "The photo shows a _____."}, {"en": "station", "vi": ["nhà ga", "trạm"], "cn": "车站", "ipa": "/stˈeɪʃən/", "collocation": "at a station", "ex_en": "The photo shows a station.", "ex_cn": "照片中可以看到车站。", "ex_vi": "Trong ảnh có nhà ga.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=station", "cloze": "The photo shows a _____."}, {"en": "airport", "vi": ["sân bay"], "cn": "机场", "ipa": "/ˈɛrpˌɔrt/", "collocation": "at an airport", "ex_en": "The photo shows an airport.", "ex_cn": "照片中可以看到机场。", "ex_vi": "Trong ảnh có sân bay.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=airport", "cloze": "The photo shows an _____."}, {"en": "hotel", "vi": ["khách sạn"], "cn": "酒店", "ipa": "/hoʊtˈɛl/", "collocation": "in a hotel", "ex_en": "The photo shows a hotel.", "ex_cn": "照片中可以看到酒店。", "ex_vi": "Trong ảnh có khách sạn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=hotel", "cloze": "The photo shows a _____."}, {"en": "office", "vi": ["văn phòng"], "cn": "办公室", "ipa": "/ˈɔfɪs/", "collocation": "in an office", "ex_en": "The photo shows an office.", "ex_cn": "照片中可以看到办公室。", "ex_vi": "Trong ảnh có văn phòng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=office", "cloze": "The photo shows an _____."}, {"en": "lobby", "vi": ["sảnh"], "cn": "大厅", "ipa": "/lˈɑbi/", "collocation": "in the lobby", "ex_en": "The photo shows a lobby.", "ex_cn": "照片中可以看到大厅。", "ex_vi": "Trong ảnh có sảnh.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=lobby", "cloze": "The photo shows a _____."}, {"en": "store", "vi": ["cửa hàng"], "cn": "商店", "ipa": "/stˈɔr/", "collocation": "inside a store", "ex_en": "The photo shows a store.", "ex_cn": "照片中可以看到商店。", "ex_vi": "Trong ảnh có cửa hàng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=store", "cloze": "The photo shows a _____."}, {"en": "shop", "vi": ["cửa hàng"], "cn": "商店", "ipa": "/ʃˈɑp/", "collocation": "inside a shop", "ex_en": "The photo shows a shop.", "ex_cn": "照片中可以看到商店。", "ex_vi": "Trong ảnh có cửa hàng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=shop", "cloze": "The photo shows a _____."}, {"en": "market", "vi": ["chợ", "thị trường"], "cn": "市场", "ipa": "/mˈɑrkət/", "collocation": "at a market", "ex_en": "The photo shows a market.", "ex_cn": "照片中可以看到市场。", "ex_vi": "Trong ảnh có chợ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=market", "cloze": "The photo shows a _____."}, {"en": "street", "vi": ["đường phố"], "cn": "街道", "ipa": "/strˈit/", "collocation": "along a street", "ex_en": "The photo shows a street.", "ex_cn": "照片中可以看到街道。", "ex_vi": "Trong ảnh có đường phố.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=street", "cloze": "The photo shows a _____."}, {"en": "road", "vi": ["con đường"], "cn": "道路", "ipa": "/rˈoʊd/", "collocation": "along the road", "ex_en": "The photo shows a road.", "ex_cn": "照片中可以看到道路。", "ex_vi": "Trong ảnh có con đường.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=road", "cloze": "The photo shows a _____."}, {"en": "sidewalk", "vi": ["vỉa hè"], "cn": "人行道", "ipa": "/sˈaɪdwˌɔk/", "collocation": "on the sidewalk", "ex_en": "The photo shows a sidewalk.", "ex_cn": "照片中可以看到人行道。", "ex_vi": "Trong ảnh có vỉa hè.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=sidewalk", "cloze": "The photo shows a _____."}, {"en": "walkway", "vi": ["lối đi bộ"], "cn": "步道", "ipa": "/wˈɔkwˌeɪ/", "collocation": "along a walkway", "ex_en": "The photo shows a walkway.", "ex_cn": "照片中可以看到步道。", "ex_vi": "Trong ảnh có lối đi bộ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=walkway", "cloze": "The photo shows a _____."}, {"en": "path", "vi": ["lối đi", "đường mòn"], "cn": "小路；路径", "ipa": "/pˈæθ/", "collocation": "along a path", "ex_en": "The photo shows a path.", "ex_cn": "照片中可以看到小路。", "ex_vi": "Trong ảnh có lối đi.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=path", "cloze": "The photo shows a _____."}, {"en": "harbor", "vi": ["bến cảng", "cảng"], "cn": "港湾；港口", "ipa": "/hˈɑrbɚ/", "collocation": "in the harbor", "ex_en": "The photo shows a harbor.", "ex_cn": "照片中可以看到港湾。", "ex_vi": "Trong ảnh có bến cảng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=harbor", "cloze": "The photo shows a _____."}, {"en": "port", "vi": ["cảng", "cảng biển"], "cn": "港口", "ipa": "/pˈɔrt/", "collocation": "at the port", "ex_en": "The photo shows a port.", "ex_cn": "照片中可以看到港口。", "ex_vi": "Trong ảnh có cảng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=port", "cloze": "The photo shows a _____."}, {"en": "library", "vi": ["thư viện"], "cn": "图书馆", "ipa": "/lˈaɪbrɛrˌi/", "collocation": "in a library", "ex_en": "The photo shows a library.", "ex_cn": "照片中可以看到图书馆。", "ex_vi": "Trong ảnh có thư viện.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=library", "cloze": "The photo shows a _____."}, {"en": "museum", "vi": ["bảo tàng"], "cn": "博物馆", "ipa": "/mjuzˈiəm/", "collocation": "at a museum", "ex_en": "The photo shows a museum.", "ex_cn": "照片中可以看到博物馆。", "ex_vi": "Trong ảnh có bảo tàng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=museum", "cloze": "The photo shows a _____."}, {"en": "kitchen", "vi": ["nhà bếp", "bếp"], "cn": "厨房", "ipa": "/kˈɪtʃən/", "collocation": "in the kitchen", "ex_en": "The photo shows a kitchen.", "ex_cn": "照片中可以看到厨房。", "ex_vi": "Trong ảnh có nhà bếp.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=kitchen", "cloze": "The photo shows a _____."}, {"en": "garage", "vi": ["ga-ra", "nhà để xe"], "cn": "车库", "ipa": "/ɡɚˈɑʒ/", "collocation": "in a garage", "ex_en": "The photo shows a garage.", "ex_cn": "照片中可以看到车库。", "ex_vi": "Trong ảnh có ga-ra.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=garage", "cloze": "The photo shows a _____."}, {"en": "garden", "vi": ["vườn", "khu vườn"], "cn": "花园", "ipa": "/ɡˈɑrdən/", "collocation": "in the garden", "ex_en": "The photo shows a garden.", "ex_cn": "照片中可以看到花园。", "ex_vi": "Trong ảnh có vườn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=garden", "cloze": "The photo shows a _____."}, {"en": "yard", "vi": ["sân", "sân nhà"], "cn": "院子", "ipa": "/jˈɑrd/", "collocation": "in the yard", "ex_en": "The photo shows a yard.", "ex_cn": "照片中可以看到院子。", "ex_vi": "Trong ảnh có sân.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=yard", "cloze": "The photo shows a _____."}, {"en": "porch", "vi": ["hiên nhà", "hành lang trước nhà"], "cn": "门廊", "ipa": "/pˈɔrtʃ/", "collocation": "on the porch", "ex_en": "The photo shows a porch.", "ex_cn": "照片中可以看到门廊。", "ex_vi": "Trong ảnh có hiên nhà.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=porch", "cloze": "The photo shows a _____."}, {"en": "patio", "vi": ["sân hiên"], "cn": "露台；庭院", "ipa": "/pˈætiˌoʊ/", "collocation": "on the patio", "ex_en": "The photo shows a patio.", "ex_cn": "照片中可以看到露台。", "ex_vi": "Trong ảnh có sân hiên.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=patio", "cloze": "The photo shows a _____."}, {"en": "balcony", "vi": ["ban công"], "cn": "阳台", "ipa": "/bˈælkəni/", "collocation": "on a balcony", "ex_en": "The photo shows a balcony.", "ex_cn": "照片中可以看到阳台。", "ex_vi": "Trong ảnh có ban công.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=balcony", "cloze": "The photo shows a _____."}, {"en": "warehouse", "vi": ["nhà kho", "kho hàng"], "cn": "仓库", "ipa": "/wˈɛrhˌaʊs/", "collocation": "in a warehouse", "ex_en": "The photo shows a warehouse.", "ex_cn": "照片中可以看到仓库。", "ex_vi": "Trong ảnh có nhà kho.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=warehouse", "cloze": "The photo shows a _____."}, {"en": "shore", "vi": ["bờ", "bờ biển", "bờ hồ"], "cn": "岸边；海岸", "ipa": "/ʃˈɔr/", "collocation": "along the shore", "ex_en": "The photo shows a shore.", "ex_cn": "照片中可以看到岸边。", "ex_vi": "Trong ảnh có bờ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=shore", "cloze": "The photo shows a _____."}, {"en": "river", "vi": ["sông", "dòng sông"], "cn": "河；河流", "ipa": "/rˈɪvɚ/", "collocation": "across a river", "ex_en": "The photo shows a river.", "ex_cn": "照片中可以看到河。", "ex_vi": "Trong ảnh có sông.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=river", "cloze": "The photo shows a _____."}, {"en": "lake", "vi": ["hồ", "hồ nước"], "cn": "湖；湖泊", "ipa": "/lˈeɪk/", "collocation": "beside a lake", "ex_en": "The photo shows a lake.", "ex_cn": "照片中可以看到湖。", "ex_vi": "Trong ảnh có hồ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=lake", "cloze": "The photo shows a _____."}, {"en": "pond", "vi": ["ao", "hồ nhỏ"], "cn": "池塘", "ipa": "/pˈɑnd/", "collocation": "near a pond", "ex_en": "The photo shows a pond.", "ex_cn": "照片中可以看到池塘。", "ex_vi": "Trong ảnh có ao.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=pond", "cloze": "The photo shows a _____."}, {"en": "computer monitor", "vi": ["màn hình máy tính"], "cn": "电脑显示器", "ipa": "/kəmpjˈutɚ mˈɑnətɚ/", "collocation": "looking at a computer monitor", "ex_en": "The photo shows a computer monitor.", "ex_cn": "照片中可以看到电脑显示器。", "ex_vi": "Trong ảnh có màn hình máy tính.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=computer%20monitor", "cloze": "The photo shows a _____."}, {"en": "bulletin board", "vi": ["bảng thông báo", "bảng tin"], "cn": "公告栏；布告板", "ipa": "/bˈʊlɪtən bˈɔrd/", "collocation": "posted on a bulletin board", "ex_en": "The photo shows a bulletin board.", "ex_cn": "照片中可以看到公告栏。", "ex_vi": "Trong ảnh có bảng thông báo.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=bulletin%20board", "cloze": "The photo shows a _____."}, {"en": "printer", "vi": ["máy in"], "cn": "打印机", "ipa": "/prˈɪntɚ/", "collocation": "using a printer", "ex_en": "The photo shows a printer.", "ex_cn": "照片中可以看到打印机。", "ex_vi": "Trong ảnh có máy in.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=printer", "cloze": "The photo shows a _____."}, {"en": "filing cabinet", "vi": ["tủ hồ sơ", "tủ đựng tài liệu"], "cn": "文件柜；档案柜", "ipa": "/fˈaɪlɪŋ kˈæbənət/", "collocation": "opening a filing cabinet", "ex_en": "The photo shows a filing cabinet.", "ex_cn": "照片中可以看到文件柜。", "ex_vi": "Trong ảnh có tủ hồ sơ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=filing%20cabinet", "cloze": "The photo shows a _____."}, {"en": "binder", "vi": ["bìa còng", "bìa hồ sơ"], "cn": "活页夹；文件夹", "ipa": "/bˈaɪndɚ/", "collocation": "documents in a binder", "ex_en": "The photo shows a binder.", "ex_cn": "照片中可以看到活页夹。", "ex_vi": "Trong ảnh có bìa còng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=binder", "cloze": "The photo shows a _____."}, {"en": "trash bin", "vi": ["thùng rác", "sọt rác"], "cn": "垃圾桶", "ipa": "/trˈæʃ bˈɪn/", "collocation": "throwing something into a trash bin", "ex_en": "The photo shows a trash bin.", "ex_cn": "照片中可以看到垃圾桶。", "ex_vi": "Trong ảnh có thùng rác.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=trash%20bin", "cloze": "The photo shows a _____."}, {"en": "sofa", "vi": ["ghế sofa", "ghế dài"], "cn": "沙发", "ipa": "/sˈoʊfə/", "collocation": "sitting on a sofa", "ex_en": "The photo shows a sofa.", "ex_cn": "照片中可以看到沙发。", "ex_vi": "Trong ảnh có ghế sofa.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=sofa", "cloze": "The photo shows a _____."}, {"en": "picture frame", "vi": ["khung ảnh", "khung tranh"], "cn": "相框；画框", "ipa": "/pˈɪktʃɚ frˈeɪm/", "collocation": "a picture frame on the wall", "ex_en": "The photo shows a picture frame.", "ex_cn": "照片中可以看到相框。", "ex_vi": "Trong ảnh có khung ảnh.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=picture%20frame", "cloze": "The photo shows a _____."}, {"en": "curtains", "vi": ["rèm cửa", "màn cửa"], "cn": "窗帘", "ipa": "/kˈɝtənz/", "collocation": "closing the curtains", "ex_en": "The photo shows a curtains.", "ex_cn": "照片中可以看到窗帘。", "ex_vi": "Trong ảnh có rèm cửa.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=curtains", "cloze": "The photo shows a _____."}, {"en": "carpet", "vi": ["thảm", "thảm trải sàn"], "cn": "地毯", "ipa": "/kˈɑrpət/", "collocation": "walking across the carpet", "ex_en": "The photo shows a carpet.", "ex_cn": "照片中可以看到地毯。", "ex_vi": "Trong ảnh có thảm.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=carpet", "cloze": "The photo shows a _____."}, {"en": "rug", "vi": ["tấm thảm nhỏ", "thảm"], "cn": "小地毯", "ipa": "/rˈʌɡ/", "collocation": "a rug on the floor", "ex_en": "The photo shows a rug.", "ex_cn": "照片中可以看到小地毯。", "ex_vi": "Trong ảnh có tấm thảm nhỏ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=rug", "cloze": "The photo shows a _____."}, {"en": "statue", "vi": ["tượng", "bức tượng"], "cn": "雕像；塑像", "ipa": "/stˈætʃˌu/", "collocation": "standing near a statue", "ex_en": "The photo shows a statue.", "ex_cn": "照片中可以看到雕像。", "ex_vi": "Trong ảnh có tượng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=statue", "cloze": "The photo shows a _____."}, {"en": "lamp", "vi": ["đèn", "đèn bàn"], "cn": "灯；台灯", "ipa": "/lˈæmp/", "collocation": "turning on a lamp", "ex_en": "The photo shows a lamp.", "ex_cn": "照片中可以看到灯。", "ex_vi": "Trong ảnh có đèn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=lamp", "cloze": "The photo shows a _____."}, {"en": "light fixture", "vi": ["bộ đèn", "thiết bị chiếu sáng"], "cn": "灯具", "ipa": "/lˈaɪt fˈɪkstʃɚ/", "collocation": "installing a light fixture", "ex_en": "The photo shows a light fixture.", "ex_cn": "照片中可以看到灯具。", "ex_vi": "Trong ảnh có bộ đèn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=light%20fixture", "cloze": "The photo shows a _____."}, {"en": "ceiling", "vi": ["trần nhà"], "cn": "天花板", "ipa": "/sˈilɪŋ/", "collocation": "hanging from the ceiling", "ex_en": "The photo shows a ceiling.", "ex_cn": "照片中可以看到天花板。", "ex_vi": "Trong ảnh có trần nhà.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=ceiling", "cloze": "The photo shows a _____."}, {"en": "floor", "vi": ["sàn nhà", "tầng"], "cn": "地板；楼层", "ipa": "/flˈɔr/", "collocation": "on the floor", "ex_en": "The photo shows a floor.", "ex_cn": "照片中可以看到地板。", "ex_vi": "Trong ảnh có sàn nhà.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=floor", "cloze": "The photo shows a _____."}, {"en": "hanging on", "vi": ["treo trên", "đang treo trên"], "cn": "挂在……上", "ipa": "/hˈæŋɪŋ ˈɑn/", "collocation": "hanging on the wall", "ex_en": "The photo shows a hanging on.", "ex_cn": "照片中可以看到挂在……上。", "ex_vi": "Trong ảnh có treo trên.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=hanging%20on", "cloze": "The photo shows a _____."}, {"en": "hanging from", "vi": ["treo từ", "thả xuống từ"], "cn": "从……悬挂下来", "ipa": "/hˈæŋɪŋ frˈʌm/", "collocation": "hanging from the ceiling", "ex_en": "The photo shows a hanging from.", "ex_cn": "照片中可以看到从……悬挂下来。", "ex_vi": "Trong ảnh có treo từ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=hanging%20from", "cloze": "The photo shows a _____."}, {"en": "suspended from the wall", "vi": ["được treo trên tường"], "cn": "悬挂在墙上", "ipa": "/səspˈɛndɪd frˈʌm ðə wˈɔl/", "collocation": "suspended from the wall", "ex_en": "A decorative object is suspended from the wall.", "ex_cn": "一个装饰品悬挂在墙上。", "ex_vi": "Một vật trang trí được treo trên tường.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=suspended%20from%20the%20wall", "cloze": "A decorative object is _____."}, {"en": "mounted on", "vi": ["được gắn trên", "được lắp trên"], "cn": "安装在……上", "ipa": "/mˈaʊntəd ˈɑn/", "collocation": "mounted on the wall", "ex_en": "A television is mounted on the wall.", "ex_cn": "一台电视安装在墙上。", "ex_vi": "Một chiếc TV được gắn trên tường.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=mounted%20on", "cloze": "A television is _____ the wall."}, {"en": "stacked on", "vi": ["được xếp chồng trên"], "cn": "堆叠在……上", "ipa": "/stˈækt ˈɑn/", "collocation": "stacked on a shelf", "ex_en": "The boxes are stacked on a shelf.", "ex_cn": "这些箱子堆叠在架子上。", "ex_vi": "Các hộp được xếp chồng trên kệ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=stacked%20on", "cloze": "The boxes are _____ a shelf."}, {"en": "piled up", "vi": ["chất đống", "được chất thành đống"], "cn": "堆积起来", "ipa": "/pˈaɪld ˈʌp/", "collocation": "piled up on the floor", "ex_en": "Some papers are piled up on the floor.", "ex_cn": "一些纸张堆在地板上。", "ex_vi": "Một số giấy tờ được chất đống trên sàn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=piled%20up", "cloze": "Some papers are _____ on the floor."}, {"en": "scattered on", "vi": ["rải rác trên", "vương vãi trên"], "cn": "散落在……上", "ipa": "/skˈætɚd ˈɑn/", "collocation": "scattered on the ground", "ex_en": "Leaves are scattered on the ground.", "ex_cn": "树叶散落在地上。", "ex_vi": "Lá cây nằm rải rác trên mặt đất.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=scattered%20on", "cloze": "Leaves are _____ the ground."}, {"en": "displayed on", "vi": ["được trưng bày trên", "được bày trên"], "cn": "陈列在……上", "ipa": "/dɪsplˈeɪd ˈɑn/", "collocation": "displayed on a shelf", "ex_en": "Several products are displayed on a shelf.", "ex_cn": "几件商品陈列在架子上。", "ex_vi": "Một vài sản phẩm được trưng bày trên kệ.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=displayed%20on", "cloze": "Several products are _____ a shelf."}, {"en": "set on", "vi": ["được đặt trên"], "cn": "放置在……上", "ipa": "/sˈɛt ˈɑn/", "collocation": "set on a table", "ex_en": "A vase is set on the table.", "ex_cn": "一个花瓶放在桌子上。", "ex_vi": "Một chiếc bình được đặt trên bàn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=set%20on", "cloze": "A vase is _____ the table."}, {"en": "are occupied", "vi": ["đang có người sử dụng", "đã có người ngồi"], "cn": "被占用；有人使用", "ipa": "/ˈɑr ˈɑkjəpˌaɪd/", "collocation": "the seats are occupied", "ex_en": "Most of the seats are occupied.", "ex_cn": "大多数座位都有人坐。", "ex_vi": "Hầu hết các ghế đều đã có người ngồi.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=are%20occupied", "cloze": "Most of the seats _____."}, {"en": "are unoccupied", "vi": ["đang trống", "chưa có người sử dụng"], "cn": "空着；未被占用", "ipa": "/ˈɑr ənˈɑkjəpˌaɪd/", "collocation": "the seats are unoccupied", "ex_en": "Several seats are unoccupied.", "ex_cn": "有几个座位是空着的。", "ex_vi": "Một vài chỗ ngồi vẫn đang trống.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=are%20unoccupied", "cloze": "Several seats _____."}, {"en": "floating on", "vi": ["nổi trên", "đang nổi trên"], "cn": "漂浮在……上", "ipa": "/flˈoʊtɪŋ ˈɑn/", "collocation": "floating on the water", "ex_en": "A boat is floating on the water.", "ex_cn": "一艘船漂浮在水面上。", "ex_vi": "Một chiếc thuyền đang nổi trên mặt nước.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=floating%20on", "cloze": "A boat is _____ the water."}, {"en": "be planted", "vi": ["được trồng"], "cn": "被种植", "ipa": "/bˈi plˈæntɪd/", "collocation": "be planted along the road", "ex_en": "Trees can be planted along the road.", "ex_cn": "道路两旁可以种树。", "ex_vi": "Cây có thể được trồng dọc theo con đường.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=be%20planted", "cloze": "Trees can _____ along the road."}, {"en": "have been arranged", "vi": ["đã được sắp xếp", "đã được bố trí"], "cn": "已经被排列好", "ipa": "/hˈæv bˈɪn ɚˈeɪndʒd/", "collocation": "have been arranged in rows", "ex_en": "The chairs have been arranged in rows.", "ex_cn": "椅子已经排成几排。", "ex_vi": "Những chiếc ghế đã được sắp xếp thành hàng.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=have%20been%20arranged", "cloze": "The chairs _____ in rows."}, {"en": "have been opened", "vi": ["đã được mở"], "cn": "已经被打开", "ipa": "/hˈæv bˈɪn ˈoʊpənd/", "collocation": "the windows have been opened", "ex_en": "The windows have been opened.", "ex_cn": "窗户已经被打开。", "ex_vi": "Các cửa sổ đã được mở.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=have%20been%20opened", "cloze": "The windows _____."}, {"en": "have been pulled up", "vi": ["đã được kéo lên"], "cn": "已经被拉起", "ipa": "/hˈæv bˈɪn pˈʊld ˈʌp/", "collocation": "the blinds have been pulled up", "ex_en": "The blinds have been pulled up.", "ex_cn": "百叶窗已经被拉起来。", "ex_vi": "Rèm cuốn đã được kéo lên.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=have%20been%20pulled%20up", "cloze": "The blinds _____."}, {"en": "have been laid out", "vi": ["đã được bày ra", "đã được sắp ra"], "cn": "已经被摆放好；铺开", "ipa": "/hˈæv bˈɪn lˈeɪd ˈaʊt/", "collocation": "have been laid out on the table", "ex_en": "The documents have been laid out on the table.", "ex_cn": "文件已经摆放在桌子上。", "ex_vi": "Các tài liệu đã được bày ra trên bàn.", "cambridge_url": "https://dictionary.cambridge.org/search/direct/?datasetsearch=english&q=have%20been%20laid%20out", "cloze": "The documents _____ on the table."}];
+let mode="mixed", order=[], idx=0, score=0, checked=false, wrongs=[], currentType="listen_write";
+const $=id=>document.getElementById(id);
+
+function shuffle(a){
+  const b=[...a];
+  for(let i=b.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [b[i],b[j]]=[b[j],b[i]];
+  }
+  return b;
+}
+function norm(s){
+  return s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/đ/g,"d").replace(/[’']/g,"'")
+    .replace(/[^a-z0-9\s'-]/g," ").replace(/\s+/g," ").trim();
+}
+function viAccepted(input,answers){
+  const n=norm(input); if(!n)return false;
+  return answers.some(a=>{const x=norm(a);return n===x||(n.length>=4&&(n.includes(x)||x.includes(n)));});
+}
+function enAccepted(input,target){return norm(input)===norm(target);}
+
+function chooseType(){
+  if(mode!=="mixed") return mode;
+  const pool=["listen_write","sentence_target","listen_meaning","listen_write_meaning","en_vi","vi_en","mc_vi_en","cloze"];
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
+function start(){
+  const n=Math.min(parseInt($("count").value,10),MASTER.length);
+  order=shuffle(MASTER.map((_,i)=>i)).slice(0,n);
+  idx=0;score=0;checked=false;wrongs=[];
+  $("quiz").style.display="block";$("end").style.display="none";
+  render();
+}
+
+function render(){
+  checked=false;
+  currentType=chooseType();
+  const x=MASTER[order[idx]];
+  $("progress").textContent=`Câu ${idx+1} / ${order.length}`;
+  $("score").textContent=`Điểm: ${score} / ${idx}`;
+  $("feedback").textContent="";$("feedback").className="feedback";
+  $("details").style.display="none";$("next").style.display="none";
+  $("context").style.display="none";$("listenbox").style.display="none";
+  $("choices").style.display="none";$("choices").innerHTML="";
+  $("typing").style.display="block";
+  $("answer").value="";$("answer").readOnly=false;
+
+  if(currentType==="listen_write"){
+    $("prompt").textContent="Nghe và viết từ/cụm từ tiếng Anh";
+    $("listenbox").style.display="block";
+    $("answer").placeholder="Nhập chính tả tiếng Anh...";
+  } else if(currentType==="sentence_target"){
+    $("prompt").textContent="Nghe cả câu → chỉ viết từ/cụm từ mới";
+    $("listenbox").style.display="block";
+    $("context").textContent="Chỉ viết từ/cụm từ mục tiêu bạn nghe thấy. Không cần chép cả câu.";
+    $("context").style.display="block";
+    $("answer").placeholder="Chỉ nhập từ/cụm từ mới...";
+  } else if(currentType==="listen_meaning"){
+    $("prompt").textContent="Nghe và chọn nghĩa tiếng Việt";
+    $("listenbox").style.display="block";
+    $("typing").style.display="none";
+    $("choices").style.display="grid";
+    makeChoices(x.vi[0],"vi");
+  } else if(currentType==="listen_write_meaning"){
+    $("prompt").textContent="Nghe từ/cụm từ → viết nghĩa tiếng Việt";
+    $("listenbox").style.display="block";
+    $("answer").placeholder="Nhập nghĩa tiếng Việt...";
+  } else if(currentType==="en_vi"){
+    $("prompt").textContent=x.en+" → ?";
+    $("answer").placeholder="Nhập nghĩa tiếng Việt...";
+  } else if(currentType==="vi_en"){
+    $("prompt").textContent=x.vi[0]+" → ?";
+    $("answer").placeholder="Nhập từ/cụm từ tiếng Anh...";
+  } else if(currentType==="mc_vi_en"){
+    $("prompt").textContent=x.vi[0];
+    $("typing").style.display="none";
+    $("choices").style.display="grid";
+    makeChoices(x.en,"en");
+  } else if(currentType==="cloze"){
+    $("prompt").textContent="Điền từ/cụm từ còn thiếu";
+    $("context").textContent=x.cloze;
+    $("context").style.display="block";
+    $("answer").placeholder="Nhập từ/cụm từ tiếng Anh...";
+  }
+
+  if($("autoplay").checked){
+    setTimeout(()=>{ currentType==="sentence_target" ? speakSentence(0.9) : speakSystem(0.9); },450);
+  }
+  if($("typing").style.display!=="none") $("answer").focus();
+}
+
+function makeChoices(correct,dir){
+  const current=order[idx];
+  const pool=shuffle(MASTER.map((x,i)=>({x,i})).filter(o=>o.i!==current)).slice(0,3);
+  const opts=shuffle([correct,...pool.map(o=>dir==="en"?o.x.en:o.x.vi[0])]);
+  opts.forEach(text=>{
+    const b=document.createElement("button");
+    b.className="choice";b.textContent=text;
+    b.onclick=()=>checkChoice(b,text,correct);
+    $("choices").appendChild(b);
+  });
+}
+
+let cachedVoices=[];
+
+function loadVoices(){
+  cachedVoices=speechSynthesis.getVoices().filter(v=>/en-US/i.test(v.lang));
+  const sel=$("voiceSelect");
+  const current=sel.value;
+  sel.innerHTML='<option value="">Tự chọn giọng US tốt nhất</option>';
+  cachedVoices.forEach((v,i)=>{
+    const o=document.createElement("option");
+    o.value=String(i);
+    o.textContent=v.name+" ("+v.lang+")";
+    sel.appendChild(o);
+  });
+  if(current) sel.value=current;
+}
+
+function bestUSVoice(){
+  if(!cachedVoices.length) loadVoices();
+  const preferred=[
+    /Aria.*Natural/i,
+    /Jenny.*Natural/i,
+    /Ava.*Natural/i,
+    /Samantha/i,
+    /Google US English/i,
+    /Microsoft.*Aria/i,
+    /Microsoft.*Jenny/i,
+    /Natural/i,
+    /Neural/i
+  ];
+  for(const p of preferred){
+    const v=cachedVoices.find(x=>p.test(x.name));
+    if(v) return v;
+  }
+  return cachedVoices[0]||null;
+}
+
+function selectedVoice(){
+  const val=$("voiceSelect").value;
+  if(val!=="" && cachedVoices[Number(val)]) return cachedVoices[Number(val)];
+  return bestUSVoice();
+}
+
+function speakSystem(rate=0.9){
+  const x=MASTER[order[idx]];
+  if(!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(x.en);
+  u.lang="en-US";
+  u.rate=rate;
+  u.pitch=1;
+  const v=selectedVoice();
+  if(v) u.voice=v;
+  speechSynthesis.speak(u);
+}
+
+function speakSentence(rate=0.9){
+  const x=MASTER[order[idx]];
+  if(!("speechSynthesis" in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(x.ex_en);
+  u.lang="en-US";
+  u.rate=rate;
+  u.pitch=1;
+  const v=selectedVoice();
+  if(v) u.voice=v;
+  speechSynthesis.speak(u);
+}
+
+function openCambridge(){
+  const x=MASTER[order[idx]];
+  window.open(x.cambridge_url,"_blank","noopener,noreferrer");
+}
+
+function showDetails(x){
+  const sentenceTitle = currentType==="sentence_target" ? "<b>Câu vừa nghe:</b> " : "";
+  $("details").innerHTML=
+    `<b>${x.en} ${x.ipa}</b><br>`+
+    `${x.cn} / ${x.vi.join(" / ")}<br>`+
+    `常見搭配 / Cụm từ thường gặp: ${x.collocation}<br>`+
+    `${sentenceTitle}${x.ex_en}<br>${x.ex_cn}<br>${x.ex_vi}`;
+  $("details").style.display="block";
+}
+
+function markWrong(x,user){
+  wrongs.push({en:x.en,vi:x.vi[0],user:user||"—"});
+}
+
+function checkChoice(btn,chosen,correct){
+  if(checked)return;
+  checked=true;
+  const x=MASTER[order[idx]];
+  [...document.querySelectorAll(".choice")].forEach(b=>{
+    if(norm(b.textContent)===norm(correct))b.classList.add("correct");
+  });
+  if(norm(chosen)===norm(correct)){
+    score++;$("feedback").textContent="✓ Chính xác!";$("feedback").className="feedback good";
+  } else {
+    btn.classList.add("wrong");$("feedback").textContent="✗ Chưa đúng.";$("feedback").className="feedback bad";
+    markWrong(x,chosen);
+  }
+  showDetails(x);$("next").style.display="inline-block";
+}
+
+function checkTyped(){
+  if(checked)return nextQ();
+  const x=MASTER[order[idx]], val=$("answer").value.trim();
+  if(!val){$("feedback").textContent="Hãy nhập đáp án trước.";$("feedback").className="feedback bad";return;}
+  let ok=false;
+  if(currentType==="en_vi" || currentType==="listen_write_meaning") ok=viAccepted(val,x.vi);
+  else ok=enAccepted(val,x.en);
+
+  checked=true;
+  if(ok){
+    score++;$("feedback").textContent="✓ Chính xác!";$("feedback").className="feedback good";
+  } else {
+    $("feedback").textContent=`✗ Chưa đúng. Đáp án: ${x.en} — ${x.vi.join(" / ")}`;
+    $("feedback").className="feedback bad";markWrong(x,val);
+  }
+  $("answer").readOnly=true;showDetails(x);$("next").style.display="inline-block";$("answer").focus();
+}
+
+function nextQ(){
+  if(!checked){
+    if($("typing").style.display!=="none")checkTyped();
+    return;
+  }
+  idx++;
+  if(idx>=order.length)finish();else render();
+}
+
+function finish(){
+  $("quiz").style.display="none";$("end").style.display="block";
+  const pct=Math.round(score/order.length*100);
+  $("result").textContent=`Kết quả: ${score} / ${order.length} câu đúng (${pct}%).`;
+  $("review").innerHTML=wrongs.length
+    ? "<h3>Từ cần ôn lại</h3>"+wrongs.map(w=>`<div class="review-item"><b>${w.en}</b> — ${w.vi}<br><span class="note">Bạn trả lời: ${w.user}</span></div>`).join("")
+    : "<p>🎉 Không có từ sai trong lượt này.</p>";
+}
+
+document.querySelectorAll(".mode[data-mode]").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll(".mode[data-mode]").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");mode=b.dataset.mode;start();
+  };
+});
+$("cambridge").onclick=openCambridge;
+$("repeat").onclick=()=>{ currentType==="sentence_target" ? speakSentence(0.9) : speakSystem(0.9); };
+$("slow").onclick=()=>{ currentType==="sentence_target" ? speakSentence(0.72) : speakSystem(0.72); };
+$("restart").onclick=start;
+$("again").onclick=start;
+$("check").onclick=checkTyped;
+$("next").onclick=nextQ;
+document.addEventListener("keydown",e=>{
+  if(e.key==="Enter"){
+    e.preventDefault();
+    if(checked)nextQ();
+    else if($("typing").style.display!=="none")checkTyped();
+  }
+});
+if("speechSynthesis" in window){
+  loadVoices();
+  speechSynthesis.onvoiceschanged=loadVoices;
+}
+start();
+</script>
+</body>
+</html>
